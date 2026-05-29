@@ -1,0 +1,181 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>🏫 ClassQuest • Flash Cards for Super Students!</title>
+<script src="https://cdn.tailwindcss.com"></script>
+<script src="https://cdn.jsdelivr.net/npm/canvas-confetti@1.9.3/dist/confetti.browser.min.js"></script>
+<style>
+  body { font-family: 'Comic Neue', system-ui; }
+  .chalkboard { background: linear-gradient(135deg, #166534, #14532d); background-image: radial-gradient(#fff2 1px, transparent 1px); background-size: 25px 25px; }
+  .card { perspective: 1000px; }
+  .card-inner { transition: transform 0.6s; transform-style: preserve-3d; }
+  .card.flipped .card-inner { transform: rotateY(180deg); }
+  .card-front, .card-back { backface-visibility: hidden; }
+  .card-back { transform: rotateY(180deg); }
+  .choice-btn { color: #1e2937 !important; font-weight: 700; transition: all 0.2s; }
+</style>
+</head>
+<body class="bg-gradient-to-br from-amber-100 via-pink-100 to-sky-100 min-h-screen">
+
+<div class="max-w-md mx-auto bg-white shadow-2xl min-h-screen overflow-hidden rounded-3xl">
+
+  <!-- HEADER -->
+  <div class="bg-emerald-600 text-white p-4 flex justify-between items-center">
+    <h1 class="text-3xl font-bold flex items-center gap-2">🏫 ClassQuest <span class="text-yellow-300 text-2xl">📙</span></h1>
+    <button onclick="restart()" class="px-4 py-1 bg-white/20 rounded-full text-sm font-medium">🏠 Home</button>
+  </div>
+
+  <!-- GRADE SELECT -->
+  <div id="screen-grade" class="p-6">
+    <h2 class="text-center text-3xl font-bold text-emerald-800 mb-6">Pick your grade, Super Student! 🏒</h2>
+    <div id="grade-buttons" class="grid grid-cols-4 gap-3"></div>
+    <button onclick="surpriseMe()" class="mt-8 w-full py-4 bg-purple-600 text-white text-xl font-bold rounded-3xl shadow active:scale-95">🎲 Surprise Me!</button>
+  </div>
+
+  <!-- STUDY SCREEN -->
+  <div id="screen-study" class="hidden p-6">
+    <div class="flex justify-between text-lg font-bold mb-4">
+      <button onclick="goHome()" class="text-3xl">←</button>
+      <span>Grade <span id="grade-num" class="text-2xl">3</span></span>
+      <span><span id="card-count">1</span>/10 • <span id="live-score" class="text-emerald-600">0%</span></span>
+    </div>
+
+    <div class="chalkboard text-white rounded-3xl p-6 shadow-inner min-h-[340px] flex flex-col items-center justify-center relative">
+      <div class="text-amber-300 text-sm mb-3">📝 Card <span id="card-num-top">1</span> of 10</div>
+      
+      <div id="flashcard" class="card w-full max-w-xs cursor-pointer" onclick="flipCard()">
+        <div class="card-inner bg-white text-slate-900 rounded-3xl shadow-2xl h-64 flex items-center justify-center p-6 border-8 border-yellow-400">
+          <div class="card-front absolute inset-0 flex flex-col items-center justify-center p-6">
+            <div id="question-text" class="text-xl font-semibold text-center leading-tight"></div>
+            <div class="text-xs text-amber-400 mt-6">👆 Tap to flip & see answer 👆</div>
+          </div>
+          <div class="card-back absolute inset-0 flex items-center justify-center bg-amber-50 rounded-3xl p-6">
+            <div id="answer-text" class="text-3xl font-bold text-emerald-700 text-center"></div>
+          </div>
+        </div>
+      </div>
+
+      <div id="choices" class="grid grid-cols-2 gap-3 w-full mt-8"></div>
+    </div>
+
+    <div class="flex gap-3 mt-6">
+      <button onclick="markCorrect()" class="flex-1 py-5 bg-emerald-500 hover:bg-emerald-600 text-white font-bold text-xl rounded-3xl">✅ I GOT IT RIGHT!</button>
+      <button onclick="nextCard()" class="flex-1 py-5 bg-slate-400 hover:bg-slate-500 text-white font-bold text-xl rounded-3xl">➡️ Next Card</button>
+    </div>
+  </div>
+
+  <!-- RESULTS -->
+  <div id="screen-results" class="hidden p-6 text-center">
+    <h2 class="text-4xl font-bold text-emerald-700">🎉 Pack Complete!</h2>
+    <div id="final-percent" class="text-8xl font-black my-4 bg-gradient-to-r from-pink-500 to-violet-600 bg-clip-text text-transparent"></div>
+    <p id="result-message" class="text-2xl font-bold"></p>
+    <button onclick="launchBigCelebration()" class="mt-6 px-12 py-5 bg-gradient-to-r from-pink-500 to-orange-500 text-white text-2xl font-bold rounded-3xl">🚀 FIREWORKS TIME! 🚀</button>
+    <div class="flex gap-3 mt-8">
+      <button onclick="restart()" class="flex-1 py-4 bg-white border-2 border-emerald-600 font-bold rounded-3xl">📙 New Grade</button>
+      <button onclick="playAgain()" class="flex-1 py-4 bg-emerald-600 text-white font-bold rounded-3xl">🔄 Same Grade</button>
+    </div>
+  </div>
+
+</div>
+
+<script>
+// FULL DECKS FOR ALL 12 GRADES
+const allDecks = {
+  1: [{q:"What is 1+1?",a:"2",opts:["1","2","3","4"]},{q:"Color of banana?",a:"Yellow",opts:["Red","Blue","Yellow","Green"]},{q:"How many legs on a dog?",a:"4",opts:["2","4","6","8"]},{q:"Spell CAT",a:"cat",opts:["kat","cat","cot","cut"]},{q:"What is 5-3?",a:"2",opts:["1","2","3","4"]},{q:"Animal that says meow?",a:"Cat",opts:["Dog","Cat","Bird","Fish"]},{q:"Fingers on one hand?",a:"5",opts:["4","5","6","10"]},{q:"Opposite of big?",a:"Small",opts:["Tall","Small","Fast","Hot"]},{q:"Color of grass?",a:"Green",opts:["Blue","Green","Purple","Orange"]},{q:"Drink from a cow?",a:"Milk",opts:["Juice","Milk","Water","Soda"]}],
+  2: [{q:"What is 5+3?",a:"8",opts:["6","7","8","9"]},{q:"Sides on a square?",a:"4",opts:["3","4","5","6"]},{q:"Capital of Florida?",a:"Tallahassee",opts:["Miami","Orlando","Tallahassee","Tampa"]},{q:"Baby cat?",a:"Kitten",opts:["Puppy","Kitten","Calf","Chick"]},{q:"What is 10-4?",a:"6",opts:["5","6","7","8"]}, {q:"What is 2+2?",a:"4",opts:["3","4","5","6"]}, {q:"How many continents?",a:"7",opts:["5","6","7","8"]}, {q:"Opposite of hot?",a:"Cold",opts:["Wet","Cold","Fast","Big"]}],
+  3: [{q:"What is 8+7?",a:"15",opts:["14","15","16","17"]},{q:"Sides on triangle?",a:"3",opts:["3","4","5","6"]},{q:"Capital of USA?",a:"Washington D.C.",opts:["New York","Washington D.C.","Los Angeles","Chicago"]},{q:"Gas plants breathe in?",a:"Carbon dioxide",opts:["Oxygen","Nitrogen","Carbon dioxide","Helium"]},{q:"Opposite of hot?",a:"Cold",opts:["Wet","Cold","Fast","Big"]},{q:"What is 9×3?",a:"27",opts:["24","27","30","36"]},{q:"Who was first president?",a:"George Washington",opts:["Lincoln","Washington","Jefferson","Adams"]},{q:"What do bees make?",a:"Honey",opts:["Milk","Honey","Juice","Bread"]}],
+  4: [{q:"What is 12×4?",a:"48",opts:["44","48","52","56"]},{q:"Author of Harry Potter?",a:"J.K. Rowling",opts:["Dr. Seuss","J.K. Rowling","Roald Dahl","Beverly Cleary"]},{q:"Largest ocean?",a:"Pacific",opts:["Atlantic","Pacific","Indian","Arctic"]},{q:"States in USA?",a:"50",opts:["48","50","52","100"]},{q:"15% of 100?",a:"15",opts:["10","15","20","25"]},{q:"What is 25% of 200?",a:"50",opts:["40","50","60","75"]},{q:"What is the capital of France?",a:"Paris",opts:["London","Paris","Berlin","Madrid"]}],
+  5: [{q:"Capital of USA?",a:"Washington D.C.",opts:["New York","Washington D.C.","Los Angeles","Chicago"]},{q:"First president?",a:"George Washington",opts:["Lincoln","Washington","Jefferson","Adams"]},{q:"What is H₂O?",a:"Water",opts:["Salt","Water","Air","Fire"]},{q:"Force that pulls apples down?",a:"Gravity",opts:["Magnet","Gravity","Wind","Sun"]},{q:"What is 7×8?",a:"56",opts:["48","56","64","72"]},{q:"Largest planet?",a:"Jupiter",opts:["Earth","Saturn","Jupiter","Mars"]},{q:"Who wrote Romeo and Juliet?",a:"William Shakespeare",opts:["Dickens","Shakespeare","Rowling","Twain"]}],
+  6: [{q:"Square root of 49?",a:"7",opts:["6","7","8","9"]},{q:"Chemical symbol for gold?",a:"Au",opts:["Ag","Au","Fe","Cu"]},{q:"16th president?",a:"Abraham Lincoln",opts:["Washington","Lincoln","Roosevelt","Kennedy"]},{q:"15% of 200?",a:"30",opts:["20","25","30","40"]},{q:"Largest continent?",a:"Asia",opts:["Africa","Asia","Europe","Australia"]}],
+  7: [{q:"Solve 4x = 20. x=?",a:"5",opts:["4","5","6","7"]},{q:"Year Columbus sailed?",a:"1492",opts:["1776","1492","1861","1941"]},{q:"Photosynthesis is?",a:"How plants make food",opts:["How animals breathe","How plants make food","How rain forms","How stars shine"]},{q:"Three states of matter?",a:"solid, liquid, gas",opts:["hot, cold, warm","solid, liquid, gas","big, small, medium","fast, slow, still"]}],
+  8: [{q:"Author of Romeo and Juliet?",a:"William Shakespeare",opts:["Dickens","Shakespeare","Rowling","Twain"]},{q:"Square root of 64?",a:"8",opts:["6","7","8","9"]},{q:"Civil War start year?",a:"1861",opts:["1776","1861","1914","1941"]},{q:"Largest planet?",a:"Jupiter",opts:["Earth","Saturn","Jupiter","Mars"]},{q:"15% of 200?",a:"30",opts:["20","25","30","40"]},{q:"Painter of Mona Lisa?",a:"Leonardo da Vinci",opts:["Picasso","da Vinci","Van Gogh","Monet"]}],
+  9: [{q:"What does DNA stand for?",a:"Deoxyribonucleic acid",opts:["Dancing Noodles Always","Deoxyribonucleic acid","Dark Night Adventure","Dogs Need Apples"]},{q:"Pythagorean theorem?",a:"a² + b² = c²",opts:["a + b = c","a² + b² = c²","a × b = c","a / b = c"]},{q:"Boiling point of water in °C?",a:"100",opts:["0","32","100","212"]}],
+  10: [{q:"Capital of France?",a:"Paris",opts:["London","Paris","Berlin","Madrid"]},{q:"PEMDAS means?",a:"Order of operations",opts:["Math rules","Order of operations","Planet names","Sports teams"]},{q:"Who discovered gravity?",a:"Isaac Newton",opts:["Einstein","Newton","Galileo","Tesla"]}],
+  11: [{q:"Year Declaration of Independence?",a:"1776",opts:["1492","1776","1865","1945"]},{q:"Chemical symbol for silver?",a:"Ag",opts:["Si","Ag","Au","Fe"]},{q:"Solve 2x+5=13. x=?",a:"4",opts:["3","4","5","6"]}],
+  12: [{q:"Speed of light?",a:"300000 km/s",opts:["150000","300000","500000","1000000"]},{q:"Author of To Kill a Mockingbird?",a:"Harper Lee",opts:["Steinbeck","Lee","Fitzgerald","Orwell"]},{q:"Powerhouse of the cell?",a:"Mitochondria",opts:["Nucleus","Ribosome","Mitochondria","Cell wall"]}]
+};
+
+let currentGrade = 3;
+let cards = [];
+let idx = 0;
+let score = 0;
+
+function createGradeButtons() {
+  const container = document.getElementById("grade-buttons");
+  container.innerHTML = "";
+  for (let i = 1; i <= 12; i++) {
+    const btn = document.createElement("button");
+    btn.className = `py-6 text-4xl font-bold rounded-3xl shadow-md active:scale-95 transition-all ${i % 2 === 0 ? 'bg-orange-500' : 'bg-sky-500'} text-white`;
+    btn.textContent = i;
+    btn.onclick = () => startStudy(i);
+    container.appendChild(btn);
+  }
+}
+
+function startStudy(g) {
+  currentGrade = g;
+  cards = allDecks[g] || allDecks[3];
+  idx = 0;
+  score = 0;
+  document.getElementById("screen-grade").classList.add("hidden");
+  document.getElementById("screen-study").classList.remove("hidden");
+  document.getElementById("grade-num").textContent = g;
+  loadCurrentCard();
+}
+
+function loadCurrentCard() {
+  const c = cards[idx];
+  document.getElementById("question-text").textContent = c.q;
+  document.getElementById("card-num-top").textContent = idx + 1;
+  document.getElementById("live-score").textContent = Math.round((score / (cards.length * 10)) * 100) + "%";
+  
+  const container = document.getElementById("choices");
+  container.innerHTML = "";
+  c.opts.forEach(opt => {
+    const btn = document.createElement("button");
+    btn.className = "choice-btn py-5 px-4 bg-gradient-to-br from-amber-100 to-white border-4 border-yellow-400 hover:from-yellow-200 hover:to-amber-100 text-slate-900 text-xl font-bold rounded-3xl shadow-md active:scale-95";
+    btn.textContent = opt;
+    btn.onclick = () => {
+      if (opt === c.a) score += 10;
+      else alert("💡 Correct was: " + c.a);
+      nextCard();
+    };
+    container.appendChild(btn);
+  });
+  document.getElementById("answer-text").textContent = c.a;
+}
+
+function flipCard() { document.getElementById("flashcard").classList.toggle("flipped"); }
+function markCorrect() { score += 10; alert("⭐ Great job!"); nextCard(); }
+function nextCard() {
+  idx++;
+  if (idx >= cards.length) showResults();
+  else loadCurrentCard();
+}
+function showResults() {
+  document.getElementById("screen-study").classList.add("hidden");
+  const res = document.getElementById("screen-results");
+  res.classList.remove("hidden");
+  const percent = Math.round((score / (cards.length * 10)) * 100);
+  document.getElementById("final-percent").textContent = percent + "%";
+  document.getElementById("result-message").textContent = percent === 100 ? "🌟 PERFECT SCORE! GENIUS! 🌟" : "You did great! Keep studying!";
+  if (percent === 100) setTimeout(launchBigCelebration, 400);
+}
+function launchBigCelebration() {
+  confetti({particleCount: 300, spread: 100, origin: { y: 0.6 }});
+  confetti({particleCount: 150, angle: 60, spread: 70, origin: { x: 0.1 }});
+  confetti({particleCount: 150, angle: 120, spread: 70, origin: { x: 0.9 }});
+}
+function surpriseMe() { const r = Math.floor(Math.random() * 12) + 1; startStudy(r); }
+function restart() { location.reload(); }
+function playAgain() { startStudy(currentGrade); }
+function goHome() { location.reload(); }
+
+// INIT
+createGradeButtons();
+document.getElementById("screen-grade").classList.remove("hidden");
+</script>
+</body>
+</html>
